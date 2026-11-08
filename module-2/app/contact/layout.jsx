@@ -1,0 +1,14 @@
+import React from 'react'
+
+const ContactLayout = ({children}) => {
+  return (
+    <div>
+        <h1>Header</h1>
+      Contact Layout
+      {children}
+      <h1>Footer</h1>
+    </div>
+  )
+}
+
+export default ContactLayout
