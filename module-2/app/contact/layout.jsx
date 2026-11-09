@@ -6,7 +6,7 @@ const ContactLayout = ({children}) => {
         <h1>Header</h1>
       Contact Layout
       {children}
-      <h1>Footer</h1>
+      <h1>Footer By Kapil Sarkar</h1>
     </div>
   )
 }
