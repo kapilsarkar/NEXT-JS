@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Footer from "./components/footer";
+import Header from "./components/header";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +30,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         className="min-h-full flex flex-col"
         suppressHydrationWarning
       >
-        {children}
+        <Suspense
+          fallback={
+            <header className="text-gray-400 bg-gray-900 body-font">
+              <h1>Welcome Page : This is Our Home Page By Kapil Sarkar</h1>
+            </header>
+          }
+        >
+          <Header />
+        </Suspense>
+
+        <main className="flex-1">
+          {children}
+        </main>
+
+        <Footer />
       </body>
     </html>
   );
