@@ -133,3 +133,193 @@ export default DocsPage;
 - Dynamic values arrive through `params`, which must be **awaited** in Server Components.
 - Nested dynamic folders produce multiple keys in `params`.
 - Catch-all params are **arrays**; single dynamic params are **strings**.
+
+---
+
+# Part 2 – Route Groups and Private Folders
+
+> **Quick refresher:** In the App Router, every folder inside `app/` becomes part of the URL, and a `page.jsx` makes that URL accessible. Two special folder conventions let you *organize* your code without changing your URLs:
+>
+> - `(folderName)` → **Route Group**: the folder is used for organizing only, and its name is **removed** from the URL.
+> - `_folderName` → **Private Folder**: the folder (and everything inside it) is **excluded from routing** completely.
+
+---
+
+## 1. The Problem: Rigid Folder Structure
+
+### Step 1 – `app/admin/dashboard/page.jsx`
+
+Create a folder `admin` inside `app`, then a folder `dashboard` inside it, and add a `page.jsx`.
+
+```jsx
+const DashBoardPage = () => {
+  return <div>Welcome to DashBoard Page</div>;
+};
+
+export default DashBoardPage;
+```
+
+### Step 2 – `app/admin/settings/page.jsx`
+
+Inside `admin`, create a second folder `settings` with its own `page.jsx`.
+
+```jsx
+const SettingPage = () => {
+  return <div>Welcome to Settings Page</div>;
+};
+
+export default SettingPage;
+```
+
+**Folder structure and URLs at this stage**
+
+```
+app/
+└── admin/
+    ├── dashboard/
+    │   └── page.jsx      → /admin/dashboard
+    └── settings/
+        └── page.jsx      → /admin/settings
+```
+
+### Limitation – Rigid folder structure
+
+Every folder name becomes part of the URL, so you can't group related pages (like all admin pages) into one folder **without** adding that folder name to the URL. Also note that `/admin` alone gives a **404**, because the `admin` folder has no `page.jsx` of its own.
+
+---
+
+## 2. Route Groups – `(folderName)`
+
+### Step 3 – Wrap `admin` in parentheses → `(admin)`
+
+Rename `admin` to `(admin)`. Parentheses tell Next.js: *"use this folder for organization only, don't put it in the URL."*
+
+```
+app/
+└── (admin)/
+    ├── dashboard/
+    │   └── page.jsx      → /dashboard
+    └── settings/
+        └── page.jsx      → /settings
+```
+
+- Visiting `http://localhost:3000/settings` now works.
+- Visiting `http://localhost:3000/admin/settings` now gives a **404**, because `admin` is no longer part of the URL.
+
+> **Rule to remember:** Two route groups can't resolve to the *same URL*. For example, `(admin)/settings/page.jsx` and `(user)/settings/page.jsx` would conflict, since both become `/settings`.
+
+### Step 4 – Auth pages inside a `(auth)` group
+
+Create a folder `auth` inside `app`, and wrap it as `(auth)`. Inside it, create three folders: `sign-in`, `sign-up` and `forget-password`, each with a `page.jsx`. Inside `sign-in`, add a **private folder** `_components` that holds the form component.
+
+```
+app/
+└── (auth)/
+    ├── layout.jsx                  ← shared layout (see note below)
+    ├── sign-in/
+    │   ├── page.jsx                → /sign-in
+    │   └── _components/
+    │       └── sign-in-form.jsx    ← NOT a route (private folder)
+    ├── sign-up/
+    │   └── page.jsx                → /sign-up
+    └── forget-password/
+        └── page.jsx                → /forget-password
+```
+
+#### a) `app/(auth)/sign-in/_components/sign-in-form.jsx`
+
+```jsx
+const SignInForm = () => {
+  return <div>Welcome to Sign-In Form-Page</div>;
+};
+
+export default SignInForm;
+```
+
+**Why `_components`?** A folder starting with an underscore is a **private folder**. Next.js ignores it for routing, so `/sign-in/_components` is not a URL, even if it contained a `page.jsx`. This keeps helper files (components, utils, styles) next to the route that uses them without exposing them. (If you ever need a literal underscore in a URL, write the folder as `%5Ffolder`.)
+
+#### b) `app/(auth)/sign-in/page.jsx`
+
+```jsx
+import SignInForm from "./_components/sign-in-form";
+
+const SignInPage = () => {
+  return (
+    <div>
+      <h1>Welcome to the Sign In Page</h1>
+      <SignInForm />
+    </div>
+  );
+};
+
+export default SignInPage;
+```
+
+#### c) `app/(auth)/forget-password/page.jsx`
+
+```jsx
+const ForgetPassword = () => {
+  return (
+    <div>
+      <h1>Welcome to Forget Password Page</h1>
+    </div>
+  );
+};
+
+export default ForgetPassword;
+```
+
+#### d) `app/(auth)/layout.jsx`
+
+```jsx
+const AuthLayout = ({ children }) => {
+  return (
+    <div className="flex flex-col items-center justify-center h-screen">
+      <h1 className="text-5xl font-bold text-indigo-500">Welcome to Auth Layout</h1>
+      {children}
+    </div>
+  );
+};
+
+export default AuthLayout;
+```
+
+**How layouts work with route groups:** A `layout.jsx` wraps every page *inside its folder*, and `children` is where the page renders. Placing the layout at the group level, `(auth)/layout.jsx`, means **all** auth pages (`/sign-in`, `/sign-up`, `/forget-password`) share it. A great use of route groups is giving different sections of your site different layouts without changing any URL.
+
+---
+
+## 3. Home Page and Private Folders
+
+### Step 5 – `app/_root/page.jsx`
+
+```jsx
+export default function Home() {
+  return (
+    <section className="text-gray-400 bg-gray-900 body-font">
+      <h1>Welcome to the Home Page-(module-3)</h1>
+    </section>
+  );
+}
+```
+
+**Important:** because the folder starts with an underscore, `_root` is a **private folder**, so this page is **not reachable** at any URL (including `/`). This is a nice demo of how private folders work, but it isn't a home page.
+
+To make a real home page, use one of these:
+
+- `app/page.jsx` → served at `/`
+- `app/(root)/page.jsx` → also served at `/`, using a route group (note the **parentheses**, not an underscore)
+
+Use only one of them, since two pages resolving to `/` will conflict.
+
+---
+
+## Key Takeaways
+
+| Convention | Example | Effect on URL | Typical use |
+| --- | --- | --- | --- |
+| Route group | `(auth)` | Name is **removed** from URL | Organize routes, share a layout per section |
+| Private folder | `_components` | Folder is **not routable** | Keep helper files beside routes |
+
+- Folder names normally become URL segments. Use `(parentheses)` to remove one, or `_underscore` to hide one entirely.
+- A route group needs a `page.jsx` somewhere inside it to produce a URL.
+- Layouts apply to everything in their folder, so put shared layouts at the route-group level.
