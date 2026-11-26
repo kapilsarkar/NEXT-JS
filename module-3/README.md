@@ -323,3 +323,262 @@ Use only one of them, since two pages resolving to `/` will conflict.
 - Folder names normally become URL segments. Use `(parentheses)` to remove one, or `_underscore` to hide one entirely.
 - A route group needs a `page.jsx` somewhere inside it to produce a URL.
 - Layouts apply to everything in their folder, so put shared layouts at the route-group level.
+
+---
+
+## PART-3
+
+## Next.js Intercepting Routes — Revision Guide
+
+**Intercepting Routes** in Next.js allow you to load a route from another part of your application within the current layout. This routing paradigm is especially useful when you want to display new content (like a modal, photo preview, or login screen) without the user switching to a completely different context—while still keeping the URL shareable and refreshable.
+
+> **Core Rule of Thumb:**
+> * **Soft Navigation** (clicking a `<Link>` or using `router.push`): Renders the **Intercepted** page.
+> * **Hard Navigation** (page reload / refresh or direct URL entry): Renders the **Actual** target page.
+
+---
+
+## 1. Convention Cheat Sheet
+
+Intercepting routes are defined using the `(..)` convention, which works similarly to relative paths (`../`), except it matches **route segments** rather than filesystem folders.
+
+| Convention | Matches Route Segment | Description |
+| :--- | :--- | :--- |
+| `(.)` | **Same level** | Intercepts a route at the exact same segment level. |
+| `(..)` | **One level above** | Intercepts a route one segment level higher. |
+| `(..)(..)` | **Two levels above** | Intercepts a route two segment levels higher. |
+| `(...)` | **Root `app` directory** | Intercepts a route directly from the root `app/` directory, regardless of nesting depth. |
+
+*(Note: Route groups like `(marketing)` do not count as route segments.)*
+
+---
+
+## 2. Project Folder Structure
+
+Based on your practice setup, here is how the folder hierarchy is organized inside the `app/` directory:
+
+```text
+app/
+├── final/
+│   └── page.jsx                  # Actual route: /final
+├── four/
+│   └── page.jsx                  # Actual route: /four
+├── three/
+│   └── page.jsx                  # Actual route: /three
+└── one/
+    ├── page.jsx                  # Route: /one (Entry point with links)
+    ├── (.)two/
+    │   └── page.jsx              # Intercepts /one/two (Same level)
+    ├── (..)three/
+    │   └── page.jsx              # Intercepts /three (One level up)
+    └── two/
+        ├── page.jsx              # Actual route: /one/two
+        ├── (..)(..)four/
+        │   └── page.jsx          # Intercepts /four (Two levels up)
+        └── inner-two/
+            ├── page.jsx          # Route: /one/two/inner-two
+            └── (...)final/
+                └── page.jsx      # Intercepts /final (From root app/)
+```
+
+---
+
+## 3. How Each Interception Works
+
+### A. Same-Level Interception: `(.)`
+
+* **Location:** `app/one/(.)two/page.jsx`
+* **Trigger:** Clicking `<Link href="/one/two">` from `/one`.
+* **Behavior:** Because `two` is at the same segment level as `(.)two` inside `one/`, Next.js intercepts the soft navigation and renders `SameLevelTwoInterCeptedPage`. Refreshing the browser loads the actual `app/one/two/page.jsx`.
+
+### B. One-Level-Up Interception: `(..)`
+
+* **Location:** `app/one/(..)three/page.jsx`
+* **Trigger:** Clicking `<Link href="/three">` from `/one`.
+* **Behavior:** `(..)` steps out of `one/` to the `app/` level to match `/three`. Soft navigation renders `ThreeInterCeptingRoutePage`, while a page refresh loads `app/three/page.jsx`.
+
+### C. Two-Levels-Up Interception: `(..)(..)`
+
+* **Location:** `app/one/two/(..)(..)four/page.jsx`
+* **Trigger:** Navigating to `/four` via `<Link>` from `/one/two`.
+* **Behavior:** `(..)(..)` steps up two route segments (`two` $\rightarrow$ `one` $\rightarrow$ `app`) to match `/four`. Soft navigation renders `FourInterCeptedRoutesPage`, while a page refresh loads `app/four/page.jsx`.
+
+### D. Root-Level Interception: `(...)`
+
+* **Location:** `app/one/two/inner-two/(...)final/page.jsx`
+* **Trigger:** Clicking `<Link href="/final">` from `/one/two/inner-two`.
+* **Behavior:** Regardless of how deeply nested `inner-two` is, `(...)` looks directly inside the root `app/` directory for `final`. Soft navigation renders `InterCeptedFinalPage`, while refreshing loads `app/final/page.jsx`.
+
+---
+
+## 4. Code Reference
+
+### Entry & Navigation Pages
+
+#### `app/one/page.jsx`
+
+```jsx
+import React from 'react'
+import Link from 'next/link'
+
+const OnePage = () => {
+  return (
+    <div>
+      <h1>One Page</h1>
+      <div className='flex flex-col'>
+        <Link href={"/one/two"}>Redirect to Two Page</Link>
+        <Link href={"/three"}>Redirect to Three Page</Link>
+      </div>
+    </div>
+  )
+}
+
+export default OnePage
+```
+
+#### `app/one/two/inner-two/page.jsx`
+
+```jsx
+import React from 'react'
+import Link from 'next/link'
+
+const InnerTwoPage = () => {
+  return (
+    <div>
+      <h1>Inner Two Page</h1>
+      <Link href={"/final"}>Final Page</Link>
+    </div>
+  )
+}
+
+export default InnerTwoPage
+```
+
+---
+
+### Intercepting Pages (Rendered on `<Link>` Click)
+
+#### `app/one/(.)two/page.jsx`
+
+```jsx
+import React from 'react'
+
+const SameLevelTwoInterCeptedPage = () => {
+  return (
+    <div>
+      <h1>Same Level Two InterCepted Page</h1>
+    </div>
+  )
+}
+
+export default SameLevelTwoInterCeptedPage
+```
+
+#### `app/one/(..)three/page.jsx`
+
+```jsx
+import React from 'react'
+
+const ThreeInterCeptingRoutePage = () => {
+  return (
+    <div>
+      <h1>ThreeInterCeptingRoutePage</h1>
+    </div>
+  )
+}
+
+export default ThreeInterCeptingRoutePage
+```
+
+#### `app/one/two/(..)(..)four/page.jsx`
+
+```jsx
+import React from 'react'
+
+const FourInterCeptedRoutesPage = () => {
+  return (
+    <div>
+      <h1>Four InterCepted Routes Page</h1>
+    </div>
+  )
+}
+
+export default FourInterCeptedRoutesPage
+```
+
+#### `app/one/two/inner-two/(...)final/page.jsx`
+
+```jsx
+import React from 'react'
+
+const InterCeptedFinalPage = () => {
+  return (
+    <div>
+      <h1>InterCepted Final Page</h1>
+    </div>
+  )
+}
+
+export default InterCeptedFinalPage
+```
+
+---
+
+### Actual Target Pages (Rendered on Hard Refresh / Direct URL)
+
+#### `app/three/page.jsx`
+
+```jsx
+import React from 'react'
+
+const ThreePage = () => {
+  return (
+    <div>
+      <h1>Three Page</h1>
+    </div>
+  )
+}
+
+export default ThreePage
+```
+
+#### `app/four/page.jsx`
+
+```jsx
+import React from 'react'
+
+const FourPage = () => {
+  return (
+    <div>
+      <h1>Four Page</h1>
+    </div>
+  )
+}
+
+export default FourPage
+```
+
+#### `app/final/page.jsx`
+
+```jsx
+import React from 'react'
+
+const FinalPage = () => {
+  return (
+    <div>
+      <h1>Final Page</h1>
+    </div>
+  )
+}
+
+export default FinalPage
+```
+
+---
+
+## 5. Quick Revision Checklist
+
+- [ ] **Check Folder Syntax:** Ensure parentheses wrap the dots only—e.g., `(.)two`, `(..)three`, `(..)(..)four`, `(...)final` (not `(.two)`).
+- [ ] **Add Missing Links:** If you want to test `(..)(..)four` interactively, add `<Link href="/four">Redirect to Four Page</Link>` inside `app/one/two/page.jsx`.
+- [ ] **Test Both Behaviors:** Always click the `<Link>` first to verify the intercepted view, then press `F5` / `Cmd+R` to verify the actual route renders.
+
