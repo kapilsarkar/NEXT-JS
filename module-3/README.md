@@ -582,3 +582,5 @@ export default FinalPage
 - [ ] **Add Missing Links:** If you want to test `(..)(..)four` interactively, add `<Link href="/four">Redirect to Four Page</Link>` inside `app/one/two/page.jsx`.
 - [ ] **Test Both Behaviors:** Always click the `<Link>` first to verify the intercepted view, then press `F5` / `Cmd+R` to verify the actual route renders.
 
+---
+
