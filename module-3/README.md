@@ -584,3 +584,184 @@ export default FinalPage
 
 ---
 
+## Next.js App Router: Parallel Routes & Custom 404 Revision Guide
+
+A concise revision reference covering **Parallel Routes (`@slot`)**, **Slot Fallbacks (`default.jsx`)**, **Nested Slot Navigation**, and **Custom Global Not-Found Pages (`not-found.jsx`)** in Next.js App Router.
+
+---
+
+## 1. Core Concepts
+
+* **Parallel Routes (`@folder`):** Render multiple independent pages simultaneously inside the same `layout.jsx`. Named slots are passed automatically as props alongside `children` and do **not** add segments to the URL path.
+* **Why `default.jsx` Is Required:** Every parallel slot shares the same URL. During a hard refresh or direct visit to a nested slot route (like `/admin-dashboard/team-docs`), Next.js resolves that URL across **all** sibling slots (`children`, `@analytics`, `@team`). Any slot without a matching route uses `default.jsx` as its fallback instead of throwing a build/runtime error or 404.
+
+---
+
+## 2. Folder Structure
+
+```text
+app/
+├── not-found.jsx                   # Global custom 404 page
+└── admin-dashboard/
+    ├── layout.jsx                  # Receives { children, analytics, team }
+    ├── page.jsx                    # Main slot (children)
+    ├── default.jsx                 # Fallback for children
+    ├── @analytics/
+    │   ├── page.jsx                # Analytics slot
+    │   └── default.jsx             # Fallback for @analytics
+    └── @team/
+        ├── page.jsx                # Team slot
+        ├── default.jsx             # Fallback for @team
+        └── team-docs/
+            └── page.jsx            # Sub-route rendered inside @team (/admin-dashboard/team-docs)
+public/
+└── not-found.svg                   # Static SVG referenced as "/not-found.svg"
+```
+
+## 3. Common Errors & Fixes
+
+| Error / Issue | Cause | Fix |
+| :--- | :--- | :--- |
+| **The default export is not a React Component / infinite reload** | Filename typo (`lay.out.jsx` instead of `layout.jsx`), unsaved file, or stale `.next` cache. | Rename strictly to `layout.jsx`, save files, run `rm -rf .next && npm run dev`. |
+| **Parallel route slots cannot render the same URLs** | Navigating to `/admin-dashboard/team-docs` when `children` or `@analytics` has no matching route or `default.jsx`. | Add `default.jsx` in `app/admin-dashboard/` and inside every `@slot` folder. |
+| **Tailwind utility ignored (`flex - flex-col`)** | Stray hyphen inside class string. | Use `flex flex-col`. |
+
+## 4. Minimal Code Reference
+
+- A. Layout (app/admin-dashboard/layout.jsx)
+
+```js
+const AdminLayout = ({ children, analytics, team }) => {
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <div className="mb-6">{children}</div>
+      <div className="grid grid-cols-2 gap-6">
+        <div>{analytics}</div>
+        <div>{team}</div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminLayout;
+```
+
+## B. Pages & Nested Slot Route
+
+- `app/admin-dashboard/page.jsx`
+
+```js
+const AdminPage = () => {
+  return (
+    <div>
+      <h2>Admin Overview</h2>
+      <p>Welcome to the admin dashboard!</p>
+    </div>
+  );
+};
+
+export default AdminPage;
+```
+
+- `app/admin-dashboard/@analytics/page.jsx`
+
+```js
+const AnalyticsPage = () => {
+  return (
+    <div>
+      <h2>Analytics Dashboard</h2>
+      <p>View application metrics and insights.</p>
+    </div>
+  );
+};
+
+export default AnalyticsPage;
+```
+
+- `app/admin-dashboard/@team/page.jsx`
+
+```js
+import Link from "next/link";
+
+const TeamPage = () => {
+  return (
+    <div>
+      <h2>Team Dashboard</h2>
+      <p>Manage team members and access resources.</p>
+      <Link href="/admin-dashboard/team-docs">Go To Team Docs</Link>
+    </div>
+  );
+};
+
+export default TeamPage;
+```
+
+- `app/admin-dashboard/@team/team-docs/page.jsx`
+
+```js
+import Link from "next/link";
+
+const TeamDocsPage = () => {
+  return (
+    <div>
+      <h2>Team Docs Page</h2>
+      <Link href="/admin-dashboard">Go to Default</Link>
+    </div>
+  );
+};
+
+export default TeamDocsPage;
+```
+
+## C. Fallback default.jsx Files
+
+- `app/admin-dashboard/default.jsx`
+
+```js
+import AdminPage from "./page";
+export default AdminPage;
+```
+
+- `app/admin-dashboard/@analytics/default.jsx`
+
+```js
+import AnalyticsPage from "./page";
+export default AnalyticsPage;
+```
+
+- `app/admin-dashboard/@team/default.jsx`
+
+```js
+import TeamPage from "./page";
+export default TeamPage;
+```
+
+## D. Custom Global 404 (app/not-found.jsx)
+
+```js
+import Image from "next/image";
+import Link from "next/link";
+
+const NotFoundPage = () => {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <Image alt="Page not found" height="{400}" src="/not-found.svg" width="{400}"/>
+      <h1 className="text-4xl font-bold mt-4">404 — Page Not Found</h1>
+      <Link className="mt-4 underline" href="/">
+        Go To Home
+      </Link>
+    </div>
+  );
+};
+
+export default NotFoundPage;
+```
+
+## 5. Key Takeaways
+
+- @folder slots map to the parent URL and are passed as props into layout.jsx.
+
+- Always create default.jsx in the parent route and every @slot folder so hard reloads on sub-routes resolve cleanly.
+
+- Clear .next (rm -rf .next) whenever renaming Next.js special files (layout.jsx, default.jsx, not-found.jsx).
